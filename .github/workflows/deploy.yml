@@ -1,0 +1,96 @@
+name: Deploy OMS
+
+on:
+  repository_dispatch:
+    types: [deploy-uat, deploy-prod]
+
+jobs:
+  deploy-uat:
+    name: Deploy to UAT
+    runs-on: ubuntu-latest
+    if: github.event.action == 'deploy-uat'
+    environment:
+      name: UAT
+      url: https://uat-ls.zyntlabs.com
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.UAT_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to UAT
+        run: |
+          ssh ${{ secrets.UAT_SERVER_USER }}@${{ secrets.UAT_SERVER_HOST }} << 'EOF'
+            set -e
+            DEPLOY_PATH="${{ secrets.UAT_DEPLOY_PATH }}"
+            SERVICE="${{ github.event.client_payload.service }}"
+
+            echo "Pulling latest: $SERVICE"
+            cd $DEPLOY_PATH/$SERVICE
+            git fetch origin
+            git checkout development
+            git pull origin development
+
+            echo "Rebuilding $SERVICE container..."
+            cd $DEPLOY_PATH/oms-infra
+            docker compose -f docker-compose.uat.yml up -d --build $SERVICE
+            docker image prune -f
+
+            echo "UAT deployment done: $SERVICE"
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 15
+          curl -f https://uat-ls.zyntlabs.com/api/health || echo "Health check failed - check containers"
+
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.event.action == 'deploy-prod'
+    environment:
+      name: Production
+      url: https://prod-ls.zyntlabs.com
+
+    steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
+
+      - name: Add server to known hosts
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to Production
+        run: |
+          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} << 'EOF'
+            set -e
+            DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
+            SERVICE="${{ github.event.client_payload.service }}"
+
+            echo "Pulling latest: $SERVICE"
+            cd $DEPLOY_PATH/$SERVICE
+            git fetch origin
+            git checkout main
+            git pull origin main
+
+            echo "Rebuilding $SERVICE container..."
+            cd $DEPLOY_PATH/oms-infra
+            docker compose -f docker-compose.prod.yml up -d --build $SERVICE
+            docker image prune -f
+
+            echo "Production deployment done: $SERVICE"
+          EOF
+
+      - name: Health check
+        run: |
+          sleep 15
+          curl -f https://prod-ls.zyntlabs.com/api/health || echo "Health check failed - check containers"

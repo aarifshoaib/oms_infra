@@ -1,0 +1,99 @@
+version: '3.8'
+
+services:
+  # Backend API
+  backend:
+    build:
+      context: ../ls_server
+      dockerfile: Dockerfile
+    container_name: oms-backend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      MONGODB_URI: ${MONGODB_URI}
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION: ${JWT_EXPIRATION:-24h}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+    ports:
+      - "3000:3000"
+    networks:
+      - oms-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # BFF Layer
+  bff:
+    build:
+      context: ../ls_bff
+      dockerfile: Dockerfile
+    container_name: oms-bff-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      BACKEND_URL: ${BACKEND_URL:-http://backend:3000}
+      JWT_SECRET: ${JWT_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+    ports:
+      - "3001:3001"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - oms-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3001/bff/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Frontend
+  frontend:
+    build:
+      context: ../ls_client
+      dockerfile: Dockerfile
+    container_name: oms-frontend-prod
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+    ports:
+      - "8080:80"
+    depends_on:
+      - bff
+    networks:
+      - oms-network
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    # Uncomment below if you want to mount SSL certificates
+    # volumes:
+    #   - /path/to/ssl/certs:/etc/nginx/ssl:ro
+
+networks:
+  oms-network:
+    driver: bridge

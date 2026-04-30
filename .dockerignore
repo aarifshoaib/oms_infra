@@ -1,0 +1,64 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment files
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Development files
+.git/
+.github/
+.gitignore
+.vscode/
+.idea/
+*.log
+
+# Documentation
+README.md
+DEPLOYMENT.md
+API_EXAMPLES.md
+SETUP.md
+docs/
+
+# Test files
+__tests__/
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Docker files
+docker-compose*.yml
+Dockerfile
+.dockerignore
+
+# Backup and data files
+data/
+backups/
+*.sql
+*.dump
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml

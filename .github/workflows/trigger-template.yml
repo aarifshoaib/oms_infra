@@ -1,0 +1,34 @@
+# Copy this file to each service repo as .github/workflows/deploy.yml
+# For ls_server  → client-payload: '{"service": "ls_server"}'
+# For ls_bff     → client-payload: '{"service": "ls_bff"}'
+# For ls_client  → client-payload: '{"service": "ls_client"}'
+
+name: Trigger Deploy
+
+on:
+  push:
+    branches:
+      - development
+      - main
+
+jobs:
+  trigger:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger UAT deploy
+        if: github.ref == 'refs/heads/development'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DEPLOY_TOKEN }}
+          repository: aarifshoaib/oms-infra
+          event-type: deploy-uat
+          client-payload: '{"service": "SERVICE_NAME"}'
+
+      - name: Trigger Production deploy
+        if: github.ref == 'refs/heads/main'
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.DEPLOY_TOKEN }}
+          repository: aarifshoaib/oms-infra
+          event-type: deploy-prod
+          client-payload: '{"service": "SERVICE_NAME"}'
