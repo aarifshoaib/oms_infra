@@ -47,8 +47,12 @@ jobs:
               *)         COMPOSE_SERVICE="$SERVICE" ;;
             esac
 
-            echo "=== Rebuilding $COMPOSE_SERVICE container ==="
+            echo "=== Pulling oms_infra config ==="
             cd $DEPLOY_PATH/oms_infra
+            git fetch origin
+            git reset --hard origin/main
+
+            echo "=== Rebuilding $COMPOSE_SERVICE container ==="
             docker compose -f docker-compose.uat.yml --env-file .env.uat up -d --build --no-deps $COMPOSE_SERVICE
             docker image prune -f
 
