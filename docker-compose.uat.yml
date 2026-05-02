@@ -1,9 +1,8 @@
 version: '3.8'
 
 services:
-  # MongoDB for UAT environment
   mongodb:
-    image: mongo:7.0
+    image: mongo:4.4
     container_name: oms-mongodb-uat
     restart: unless-stopped
     environment:
@@ -18,12 +17,11 @@ services:
     networks:
       - oms-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
       interval: 10s
       timeout: 5s
       retries: 5
 
-  # Backend API
   backend:
     build:
       context: ../ls_server
@@ -33,7 +31,7 @@ services:
     environment:
       NODE_ENV: uat
       PORT: 3000
-      MONGODB_URI: ${MONGODB_URI:-mongodb://admin:${MONGO_ROOT_PASSWORD}@mongodb:27017/oms?authSource=admin}
+      MONGODB_URI: ${MONGODB_URI}
       JWT_ACCESS_SECRET: ${JWT_SECRET}
       JWT_REFRESH_SECRET: ${JWT_SECRET}
       JWT_ACCESS_EXPIRES_IN: ${JWT_EXPIRATION:-24h}
@@ -54,7 +52,6 @@ services:
       retries: 3
       start_period: 40s
 
-  # BFF Layer
   bff:
     build:
       context: ../ls_bff
@@ -66,7 +63,7 @@ services:
       PORT: 3001
       BACKEND_API_URL: http://backend:3000
       JWT_SECRET: ${JWT_SECRET}
-      FRONTEND_URL: http://localhost
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
     ports:
       - "3001:3001"
     depends_on:
@@ -81,15 +78,12 @@ services:
       retries: 3
       start_period: 20s
 
-  # Frontend
   frontend:
     build:
       context: ../ls_client
       dockerfile: Dockerfile
     container_name: oms-frontend-uat
     restart: unless-stopped
-    environment:
-      NODE_ENV: uat
     ports:
       - "8081:80"
     depends_on:

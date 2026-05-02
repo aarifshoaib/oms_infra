@@ -1,7 +1,13 @@
-# Copy this file to each service repo as .github/workflows/deploy.yml
-# For ls_server  → client-payload: '{"service": "ls_server"}'
-# For ls_bff     → client-payload: '{"service": "ls_bff"}'
-# For ls_client  → client-payload: '{"service": "ls_client"}'
+# Copy this file into each service repo as:
+#   .github/workflows/deploy.yml
+#
+# Then replace SERVICE_NAME with one of:
+#   backend  →  for ls_server repo
+#   bff      →  for ls_bff repo
+#   frontend →  for ls_client repo
+#
+# Also set this secret in each service repo:
+#   DEPLOY_TOKEN  →  GitHub PAT with repo scope on oms-infra repo
 
 name: Trigger Deploy
 

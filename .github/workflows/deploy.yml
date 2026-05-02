@@ -5,6 +5,7 @@ on:
     types: [deploy-uat, deploy-prod]
 
 jobs:
+  # ── UAT: auto on dispatch from any service repo (development branch) ──
   deploy-uat:
     name: Deploy to UAT
     runs-on: ubuntu-latest
@@ -14,7 +15,7 @@ jobs:
       url: https://uat-ls.zyntlabs.com
 
     steps:
-      - name: Setup SSH
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.UAT_SSH_PRIVATE_KEY }}
@@ -22,34 +23,37 @@ jobs:
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.UAT_SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ secrets.SERVER_SSH_PORT }} -H ${{ secrets.UAT_SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to UAT
+        env:
+          SERVICE: ${{ github.event.client_payload.service }}
+          DEPLOY_PATH: ${{ secrets.UAT_DEPLOY_PATH }}
+          SERVER_USER: ${{ secrets.UAT_SERVER_USER }}
+          SERVER_HOST: ${{ secrets.UAT_SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_SSH_PORT }}
         run: |
-          ssh ${{ secrets.UAT_SERVER_USER }}@${{ secrets.UAT_SERVER_HOST }} << 'EOF'
+          ssh -p $SERVER_PORT $SERVER_USER@$SERVER_HOST << ENDSSH
             set -e
-            DEPLOY_PATH="${{ secrets.UAT_DEPLOY_PATH }}"
-            SERVICE="${{ github.event.client_payload.service }}"
-
-            echo "Pulling latest: $SERVICE"
+            echo "=== Pulling $SERVICE ==="
             cd $DEPLOY_PATH/$SERVICE
             git fetch origin
-            git checkout development
-            git pull origin development
+            git reset --hard origin/development
 
-            echo "Rebuilding $SERVICE container..."
+            echo "=== Rebuilding $SERVICE container ==="
             cd $DEPLOY_PATH/oms-infra
-            docker compose -f docker-compose.uat.yml up -d --build $SERVICE
+            docker compose -f docker-compose.uat.yml --env-file .env.uat up -d --build $SERVICE
             docker image prune -f
 
-            echo "UAT deployment done: $SERVICE"
-          EOF
+            echo "=== Done: $SERVICE deployed to UAT ==="
+          ENDSSH
 
       - name: Health check
         run: |
-          sleep 15
-          curl -f https://uat-ls.zyntlabs.com/api/health || echo "Health check failed - check containers"
+          sleep 20
+          curl -sf https://uat-ls.zyntlabs.com/bff/health || echo "Warning: health check failed"
 
+  # ── Production: requires manual approval ─────────────────────────────
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
@@ -59,7 +63,7 @@ jobs:
       url: https://prod-ls.zyntlabs.com
 
     steps:
-      - name: Setup SSH
+      - name: Setup SSH agent
         uses: webfactory/ssh-agent@v0.9.0
         with:
           ssh-private-key: ${{ secrets.PROD_SSH_PRIVATE_KEY }}
@@ -67,30 +71,32 @@ jobs:
       - name: Add server to known hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
+          ssh-keyscan -p ${{ secrets.SERVER_SSH_PORT }} -H ${{ secrets.PROD_SERVER_HOST }} >> ~/.ssh/known_hosts
 
       - name: Deploy to Production
+        env:
+          SERVICE: ${{ github.event.client_payload.service }}
+          DEPLOY_PATH: ${{ secrets.PROD_DEPLOY_PATH }}
+          SERVER_USER: ${{ secrets.PROD_SERVER_USER }}
+          SERVER_HOST: ${{ secrets.PROD_SERVER_HOST }}
+          SERVER_PORT: ${{ secrets.SERVER_SSH_PORT }}
         run: |
-          ssh ${{ secrets.PROD_SERVER_USER }}@${{ secrets.PROD_SERVER_HOST }} << 'EOF'
+          ssh -p $SERVER_PORT $SERVER_USER@$SERVER_HOST << ENDSSH
             set -e
-            DEPLOY_PATH="${{ secrets.PROD_DEPLOY_PATH }}"
-            SERVICE="${{ github.event.client_payload.service }}"
-
-            echo "Pulling latest: $SERVICE"
+            echo "=== Pulling $SERVICE ==="
             cd $DEPLOY_PATH/$SERVICE
             git fetch origin
-            git checkout main
-            git pull origin main
+            git reset --hard origin/main
 
-            echo "Rebuilding $SERVICE container..."
+            echo "=== Rebuilding $SERVICE container ==="
             cd $DEPLOY_PATH/oms-infra
-            docker compose -f docker-compose.prod.yml up -d --build $SERVICE
+            docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build $SERVICE
             docker image prune -f
 
-            echo "Production deployment done: $SERVICE"
-          EOF
+            echo "=== Done: $SERVICE deployed to Production ==="
+          ENDSSH
 
       - name: Health check
         run: |
-          sleep 15
-          curl -f https://prod-ls.zyntlabs.com/api/health || echo "Health check failed - check containers"
+          sleep 20
+          curl -sf https://prod-ls.zyntlabs.com/bff/health || echo "Warning: health check failed"
