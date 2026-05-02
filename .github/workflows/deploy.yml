@@ -49,7 +49,7 @@ jobs:
 
             echo "=== Rebuilding $COMPOSE_SERVICE container ==="
             cd $DEPLOY_PATH/oms_infra
-            docker compose -f docker-compose.uat.yml --env-file .env.uat up -d --build $COMPOSE_SERVICE
+            docker compose -f docker-compose.uat.yml --env-file .env.uat up -d --build --no-deps $COMPOSE_SERVICE
             docker image prune -f
 
             echo "=== Done: $SERVICE deployed to UAT ==="
