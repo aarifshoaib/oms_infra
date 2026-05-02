@@ -38,7 +38,7 @@ jobs:
             echo "=== Pulling $SERVICE ==="
             cd $DEPLOY_PATH/$SERVICE
             git fetch origin
-            git reset --hard origin/development
+            git reset --hard origin/Development
 
             echo "=== Rebuilding $SERVICE container ==="
             cd $DEPLOY_PATH/oms-infra
