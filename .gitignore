@@ -4,3 +4,4 @@ dist/
 .env.uat
 .env.prod
 *.log
+.env.local
