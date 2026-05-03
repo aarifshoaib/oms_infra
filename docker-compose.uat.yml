@@ -64,7 +64,7 @@ services:
       PORT: 3001
       BACKEND_API_URL: http://backend:3000
       JWT_SECRET: ${JWT_SECRET}
-      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:8081}
+      FRONTEND_URL: ${FRONTEND_URL:-https://uat-ls.zyntlabs.com}
     ports:
       - "3001:3001"
     depends_on:
