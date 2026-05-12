@@ -3,6 +3,9 @@ services:
     image: mongo:4.4
     container_name: oms-mongodb-uat
     restart: unless-stopped
+    # Single-node replica set so Mongoose transactions (PI receive, order create,
+    # ledger writes) work. keyFile is required when auth + replSet are both on.
+    command: ["mongod", "--replSet", "rs0", "--bind_ip_all", "--keyFile", "/etc/mongo-keyfile/keyfile"]
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-admin}
       MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD}
@@ -13,6 +16,7 @@ services:
       # Bind mounts — data lives on the VPS filesystem, never lost on container rebuild or down -v
       - /opt/oms-data/uat/mongodb:/data/db
       - /opt/oms-data/uat/mongodb-config:/data/configdb
+      - /opt/oms-data/uat/mongo-keyfile:/etc/mongo-keyfile:ro
     networks:
       - oms-network
     healthcheck:
@@ -41,6 +45,14 @@ services:
       VAPID_PUBLIC_KEY: ${VAPID_PUBLIC_KEY}
       VAPID_PRIVATE_KEY: ${VAPID_PRIVATE_KEY}
       VAPID_EMAIL: ${VAPID_EMAIL:-admin@zyntlabs.com}
+      WHATSAPP_API_VERSION: ${WHATSAPP_API_VERSION:-v21.0}
+      WHATSAPP_PHONE_NUMBER_ID: ${WHATSAPP_PHONE_NUMBER_ID}
+      WHATSAPP_BUSINESS_ACCOUNT_ID: ${WHATSAPP_BUSINESS_ACCOUNT_ID}
+      WHATSAPP_ACCESS_TOKEN: ${WHATSAPP_ACCESS_TOKEN}
+      WHATSAPP_APP_SECRET: ${WHATSAPP_APP_SECRET}
+      WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
+      WHATSAPP_SESSION_TTL_HOURS: ${WHATSAPP_SESSION_TTL_HOURS:-24}
+      WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-en}
     ports:
       - "3000:3000"
     depends_on:
