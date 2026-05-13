@@ -26,8 +26,16 @@ services:
       WHATSAPP_VERIFY_TOKEN: ${WHATSAPP_VERIFY_TOKEN}
       WHATSAPP_SESSION_TTL_HOURS: ${WHATSAPP_SESSION_TTL_HOURS:-24}
       WHATSAPP_TEMPLATE_LANGUAGE: ${WHATSAPP_TEMPLATE_LANGUAGE:-en}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      MAILCOW_API_URL: ${MAILCOW_API_URL}
+      MAILCOW_API_KEY: ${MAILCOW_API_KEY}
+      MAILCOW_DEFAULT_DOMAIN: ${MAILCOW_DEFAULT_DOMAIN:-laurelshinetrading.com}
+      MAILCOW_DEFAULT_QUOTA_MB: ${MAILCOW_DEFAULT_QUOTA_MB:-3072}
     ports:
       - "3002:3000"
+    depends_on:
+      redis:
+        condition: service_started
     networks:
       - oms-network
     healthcheck:
@@ -93,6 +101,26 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    image: redis:7-alpine
+    container_name: oms-redis-prod
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru", "--appendonly", "yes"]
+    volumes:
+      - /opt/oms-data/prod/redis:/data
+    networks:
+      - oms-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     logging:
       driver: "json-file"
       options:
